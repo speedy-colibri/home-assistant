@@ -23,7 +23,7 @@ from homeassistant.components.light import (
     SUPPORT_EFFECT, SUPPORT_FLASH, SUPPORT_RGB_COLOR, SUPPORT_TRANSITION,
     SUPPORT_XY_COLOR, Light, PLATFORM_SCHEMA)
 from homeassistant.config import load_yaml_config_file
-from homeassistant.const import (CONF_FILENAME, CONF_HOST, DEVICE_DEFAULT_NAME)
+from homeassistant.const import (CONF_FILENAME, CONF_HOST, CONF_PORT, DEVICE_DEFAULT_NAME)
 from homeassistant.loader import get_component
 from homeassistant.components.emulated_hue import ATTR_EMULATED_HUE
 import homeassistant.helpers.config_validation as cv
@@ -121,6 +121,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             return False
     else:
         host = config.get(CONF_HOST, None)
+        port = config.get(CONF_PORT, None)
 
         if host is None:
             host = _find_host_from_config(hass, filename)
@@ -134,11 +135,11 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             socket.gethostbyname(host) in _CONFIGURED_BRIDGES:
         return
 
-    setup_bridge(host, hass, add_devices, filename, allow_unreachable,
+    setup_bridge(host, port, hass, add_devices, filename, allow_unreachable,
                  allow_in_emulated_hue, allow_hue_groups)
 
 
-def setup_bridge(host, hass, add_devices, filename, allow_unreachable,
+def setup_bridge(host, port, hass, add_devices, filename, allow_unreachable,
                  allow_in_emulated_hue, allow_hue_groups):
     """Setup a phue bridge based on host parameter."""
     import phue
@@ -146,16 +147,17 @@ def setup_bridge(host, hass, add_devices, filename, allow_unreachable,
     try:
         bridge = phue.Bridge(
             host,
-            config_file_path=hass.config.path(filename))
+            config_file_path=hass.config.path(filename),
+            port=port)
     except ConnectionRefusedError:  # Wrong host was given
-        _LOGGER.error("Error connecting to the Hue bridge at %s", host)
+        _LOGGER.error("Error connecting to the Hue bridge at %s:%s", host, port)
 
         return
 
     except phue.PhueRegistrationException:
         _LOGGER.warning("Connected to Hue at %s but not registered.", host)
 
-        request_configuration(host, hass, add_devices, filename,
+        request_configuration(host, port, hass, add_devices, filename,
                               allow_unreachable, allow_in_emulated_hue,
                               allow_hue_groups)
 
@@ -258,7 +260,7 @@ def setup_bridge(host, hass, add_devices, filename, allow_unreachable,
     update_lights()
 
 
-def request_configuration(host, hass, add_devices, filename,
+def request_configuration(host, port, hass, add_devices, filename,
                           allow_unreachable, allow_in_emulated_hue,
                           allow_hue_groups):
     """Request configuration steps from the user."""
@@ -274,7 +276,7 @@ def request_configuration(host, hass, add_devices, filename,
     # pylint: disable=unused-argument
     def hue_configuration_callback(data):
         """The actions to do when our configuration callback is called."""
-        setup_bridge(host, hass, add_devices, filename, allow_unreachable,
+        setup_bridge(host, port, hass, add_devices, filename, allow_unreachable,
                      allow_in_emulated_hue, allow_hue_groups)
 
     _CONFIGURING[host] = configurator.request_config(
