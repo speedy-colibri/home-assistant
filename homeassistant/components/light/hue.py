@@ -298,6 +298,7 @@ class HueLight(Light):
         """Initialize the light."""
         self.light_id = light_id
         self.info = info
+        _LOGGER.info('DEBUG INFO {}'.format(info))
         self.bridge = bridge
         self.update_lights = update_lights
         self.bridge_type = bridge_type
@@ -382,9 +383,10 @@ class HueLight(Light):
 
         if ATTR_XY_COLOR in kwargs:
             if self.info.get('manufacturername') == "OSRAM":
+                _LOGGER.info('DEBUG INFO {}'.format(self.info))
                 hsv = color_util.color_xy_brightness_to_hsv(
                     *kwargs[ATTR_XY_COLOR],
-                    ibrightness=self.info['bri'])
+                    ibrightness=self.info['state']['bri'])
                 command['hue'] = hsv[0]
                 command['sat'] = hsv[1]
                 command['bri'] = hsv[2]
